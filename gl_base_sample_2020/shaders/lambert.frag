@@ -6,7 +6,7 @@ in vec3 vNormal;
 out vec4 outColor;
 uniform vec3 camPos;
 
-vec3 base_color = vec3(0.1f, 0.6f, 0.15f);
+vec3 base_color = vec3(72/float(255), 61/float(255), 139/float(255)); 
 
 void main()
 {
