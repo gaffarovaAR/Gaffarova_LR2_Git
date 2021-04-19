@@ -1,0 +1,3 @@
+C:/Users/User/Desktop/КГ/Gaffarova_LR2_Git/gl_base_sample_2020/out/build/x64-Debug/CMakeFiles/gl_base_sample_2020.dir
+C:/Users/User/Desktop/КГ/Gaffarova_LR2_Git/gl_base_sample_2020/out/build/x64-Debug/CMakeFiles/edit_cache.dir
+C:/Users/User/Desktop/КГ/Gaffarova_LR2_Git/gl_base_sample_2020/out/build/x64-Debug/CMakeFiles/rebuild_cache.dir

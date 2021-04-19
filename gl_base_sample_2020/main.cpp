@@ -17,6 +17,7 @@ static bool g_captureMouse         = true;  // Мышка захвачена н�
 static bool g_capturedMouseJustNow = false;
 static int g_shaderProgram = 0;
 
+#define PI 3.14159265   
 
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
@@ -210,6 +211,281 @@ GLsizei CreateSphere(float radius, int numberSlices, GLuint &vao)
     return indices.size();
 }
 
+GLsizei CreateCone(GLuint& vao, int numberSlices, float3 center, float height, float radius)
+{
+    float angleStep = 360 / numberSlices;
+
+    std::vector<float> points = { center.x, center.y, center.z, 1.0f,
+                                  center.x, center.y, center.z + height, 1.0f };
+
+    std::vector<float> normals = { 0.0f, 0.0f, 1.0f, 1.0f,
+                                   0.0f, 0.0f, 1.0f, 1.0f };
+    std::vector<uint32_t> indices;
+
+    for (int i = 0; i < numberSlices; i++) {
+        points.push_back(center.x+radius*cos(angleStep * i * PI / 180));  // x
+        points.push_back(center.y+radius*sin(angleStep * i * PI / 180));  // y
+        points.push_back(center.z);                                       // z
+        points.push_back(1.0f);
+
+        normals.push_back(points.at(4*i + 2) / numberSlices); 
+        normals.push_back(points.at(4*i + 3) / numberSlices); 
+        normals.push_back(points.at(4*i + 4) / numberSlices); 
+        normals.push_back(1.0f);              
+
+        // основание
+        indices.push_back(0);
+        indices.push_back(i+2);
+        if ((i + 1) == numberSlices) {
+            indices.push_back(2);
+        }
+        else {
+            indices.push_back(i + 3);
+        }
+        // шапка цилиндра
+        indices.push_back(1);
+        indices.push_back(i+2);
+        if ((i + 1) == numberSlices) {
+            indices.push_back(2);
+        }
+        else {
+            indices.push_back(i + 3);
+        }
+    }
+
+    GLuint vboVertices, vboIndices, vboNormals;
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vboIndices);
+
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vboVertices);
+    glBindBuffer(GL_ARRAY_BUFFER, vboVertices);
+    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(GLfloat), points.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(0);
+
+    glGenBuffers(1, &vboNormals);
+    glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+
+    return indices.size();
+}
+
+GLsizei CreateCylinder(GLuint& vao, int numberSlices, float3 center, float height, float radius)
+{
+    float angleStep = 360 / numberSlices;
+
+    std::vector<float> points = { center.x, center.y, center.z, 1.0f,
+                                  center.x, center.y + height, center.z, 1.0f }; 
+
+    std::vector<float> normals = { 0.0f, 1.0f, 0.0f, 1.0f,
+                                   0.0f, 1.0f, 0.0f, 1.0f };
+
+    for (int i = 0; i < numberSlices; i++) {
+        // нижняя точка
+        points.push_back(center.x + radius * cos(angleStep * i * PI / 180));  // x
+        points.push_back(center.y);                                           // y
+        points.push_back(center.z + radius * sin(angleStep * i * PI / 180));  // z
+        points.push_back(1.0f);
+
+        // верхняя точка
+        points.push_back(center.x+radius * cos(angleStep * i * PI / 180));  // x
+        points.push_back(center.y+height);                                  // y
+        points.push_back(center.z+radius * sin(angleStep * i * PI / 180));  // z
+        points.push_back(1.0f);
+
+        // нормали
+        normals.push_back(points.at(8*i + 2) / numberSlices);
+        normals.push_back(points.at(8*i + 3) / numberSlices);
+        normals.push_back(points.at(8*i + 4) / numberSlices);
+        normals.push_back(1.0f);
+        normals.push_back(points.at(8*i + 6) / numberSlices);
+        normals.push_back(points.at(8*i + 7) / numberSlices);
+        normals.push_back(points.at(8*i + 8) / numberSlices);
+        normals.push_back(1.0f);
+    }
+
+    std::vector<uint32_t> indices;
+
+    for (int i = 0; i < numberSlices * 2; i += 2) {
+        // нижнее основание
+        indices.push_back(0);
+        indices.push_back(i + 2);
+        if ((i + 2) == numberSlices * 2) {
+            indices.push_back(2);
+        }
+        else {
+            indices.push_back(i + 4);
+        }
+
+        // верхнее основание
+        indices.push_back(1);
+        indices.push_back(i + 3);
+        if ((i + 2) == numberSlices * 2) {
+            indices.push_back(3);
+        }
+        else {
+            indices.push_back(i + 5);
+        }
+
+        indices.push_back(i + 2);
+        indices.push_back(i + 3);
+        if ((i + 2) == numberSlices * 2) {
+            indices.push_back(2);
+        }
+        else {
+            indices.push_back(i + 4);
+        }
+
+        indices.push_back(i + 3);
+        if ((i + 2) == numberSlices * 2) {
+            indices.push_back(2);
+            indices.push_back(3);
+        }
+        else {
+            indices.push_back(i + 4);
+            indices.push_back(i + 5);
+        }
+
+    }
+
+    GLuint vboVertices, vboIndices, vboNormals;
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vboIndices);
+
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vboVertices);
+    glBindBuffer(GL_ARRAY_BUFFER, vboVertices);
+    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(GLfloat), points.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(0);
+
+    glGenBuffers(1, &vboNormals);
+    glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+
+    return indices.size();
+}
+
+GLsizei CreatePlane(GLuint& vao, float3 center, float length)
+{
+    std::vector<float> points = { center.x-length/2, center.y, center.z-length/2, 1.0f,
+                                 center.x+length/2, center.y, center.z-length/2, 1.0f,
+                                center.x-length/2, center.y, center.z+length/2, 1.0f,
+                                center.x+length/2, center.y, center.z+length/2, 1.0f };
+
+    std::vector<float> normals = { 0.0f, 1.0f, 0.0f, 1.0f,
+                                   0.0f, 1.0f, 0.0f, 1.0f,
+                                   0.0f, 1.0f, 0.0f, 1.0f,
+                                   0.0f, 1.0f, 0.0f, 1.0f };
+
+    std::vector<uint32_t> indices = { 0u, 1u, 2u,
+                                      1u, 2u, 3u };
+
+    GLuint vboVertices, vboIndices, vboNormals;
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vboIndices);
+
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vboVertices);
+    glBindBuffer(GL_ARRAY_BUFFER, vboVertices);
+    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(GLfloat), points.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(0);
+
+    glGenBuffers(1, &vboNormals);
+    glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+
+    return indices.size();
+}
+
+GLsizei CreateParallelepiped(GLuint& vao, float3 center, float lengthx, float lengthy, float lengthz)
+{
+    std::vector<float> points = { center.x - lengthx / 2, center.y - lengthy / 2, center.z - lengthz / 2, 1.0f,
+                                center.x - lengthx / 2, center.y - lengthy / 2, center.z + lengthz / 2, 1.0f,
+                                center.x + lengthx / 2, center.y - lengthy / 2, center.z + lengthz / 2, 1.0f,
+                                center.x + lengthx / 2, center.y - lengthy / 2, center.z - lengthz / 2, 1.0f,
+                                center.x - lengthx / 2, center.y + lengthy / 2, center.z - lengthz / 2, 1.0f,
+                                center.x - lengthx / 2, center.y + lengthy / 2, center.z + lengthz / 2, 1.0f,
+                                center.x + lengthx / 2, center.y + lengthy / 2, center.z + lengthz / 2, 1.0f,
+                                center.x + lengthx / 2, center.y + lengthy / 2, center.z - lengthz / 2, 1.0f };
+
+    std::vector<float> normals = { 0.0f, 1.0f, 0.0f, 1.0f,
+                                 0.0f, 1.0f, 0.0f, 1.0f,
+                                 0.0f, 1.0f, 0.0f, 1.0f,
+                                 0.0f, 1.0f, 0.0f, 1.0f,
+                                 0.0f, 1.0f, 0.0f, 1.0f,
+                                 0.0f, 1.0f, 0.0f, 1.0f,
+                                 0.0f, 1.0f, 0.0f, 1.0f,
+                                 0.0f, 1.0f, 0.0f, 1.0f };
+
+    std::vector<uint32_t> indices = { 0u, 1u, 2u,
+                                      0u, 3u, 2u,
+                                      3u, 2u, 6u,
+                                      3u, 7u, 6u,
+                                      0u, 3u, 7u,
+                                      0u, 4u, 7u,
+                                      1u, 2u, 6u,
+                                      1u, 5u, 6u,
+                                      4u, 7u, 6u,
+                                      4u, 5u, 6u,
+                                      0u, 1u, 5u,
+                                      0u, 4u, 5u };
+
+    GLuint vboVertices, vboIndices, vboNormals;
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vboIndices);
+
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vboVertices);
+    glBindBuffer(GL_ARRAY_BUFFER, vboVertices);
+    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(GLfloat), points.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(0);
+
+    glGenBuffers(1, &vboNormals);
+    glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+
+    return indices.size();
+}
 
 int initGL()
 {
@@ -279,14 +555,51 @@ int main(int argc, char** argv)
 	shaders[GL_FRAGMENT_SHADER] = "../shaders/lambert.frag";
 	ShaderProgram lambert(shaders); GL_CHECK_ERRORS;
 
-    GLuint vaoSphere;
-    float radius = 1.0f;
-    GLsizei sphereIndices = CreateSphere(radius, 8, vaoSphere);
+
+    GLuint vaoSphere/* = glGetUniformLocation(lambert.GetProgram(), "base_color")*/;
+    //glUniform3f(vaoSphere, float(224/255), float(255 / 255), float(255 / 255));
+    GLsizei sphereIndices = CreateSphere(1.0f, 64, vaoSphere);
+
+    GLuint vaoCone;
+    GLsizei coneIndices = CreateCone(vaoCone, 30, float3(0.0f, 2.25f, -9.55f), 0.4f, 0.1f);
+
+    GLuint vaoCylinder;
+    GLsizei cylinderIndices = CreateCylinder(vaoCylinder, 30, float3(0.0f, 2.6f, -10.0f), 0.5f, 0.3f);
+
+    GLuint vaoPlane;
+    GLsizei planeIndices = CreatePlane(vaoPlane, float3(0.0f, -0.8f, -10.0f), 10.0f);
+
+    GLuint vaoParallelepiped;
+    GLsizei parallelepipedIndices = CreateParallelepiped(vaoParallelepiped, float3(-4.5f, -0.3f, -10.0f), 1.0f, 1.0f, 10.0f);
+
+    GLuint vaoGrass;
+    GLsizei grassIndices = CreateCone(vaoGrass, 20, float3(0.0f, 0.0f, 0.0f), 1.0f, 0.1f);
+
+    GLuint vaoBirdBody;
+    GLsizei birdBodyIndices = CreateSphere(0.8f, 64, vaoBirdBody);
+
+    GLuint vaoBirdNose;
+    GLsizei birdNoseIndices = CreateCone(vaoBirdNose, 30, float3(0.0f, 0.0f, 0.0f), 0.15f, 0.05f);
+
+    GLuint vaoBirdWing;
+    GLsizei birdWingIndices = CreateSphere(0.6f, 64, vaoBirdWing);
 
     glViewport(0, 0, WIDTH, HEIGHT);  GL_CHECK_ERRORS;
     glEnable(GL_DEPTH_TEST);  GL_CHECK_ERRORS;
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+    std::vector<std::vector<float>> rand_num;
+    for (int i = 0; i < 33; i++)
+    {
+        std::vector<float> rand_n;
+        for (int j = 0; j < 29; j++) {
+            rand_n.push_back(0.1f * float(rand() % 10 + 1));
+        }
+        rand_num.push_back(rand_n);
+    }
+
+    int step = 0;
 	//цикл обработки сообщений и отрисовки сцены каждый кадр
 	while (!glfwWindowShouldClose(window))
 	{
@@ -306,24 +619,157 @@ int main(int argc, char** argv)
 
         float4x4 view       = camera.GetViewMatrix();
         float4x4 projection = projectionMatrixTransposed(camera.zoom, float(WIDTH) / float(HEIGHT), 0.1f, 1000.0f);
-	    float4x4 model; 
+	    
 
         lambert.SetUniform("view", view);       GL_CHECK_ERRORS;
         lambert.SetUniform("projection", projection); GL_CHECK_ERRORS;
 
         glBindVertexArray(vaoSphere);
         {
-            model = transpose(mul(translate4x4(float3(0.0f, 0.0f, 0.0f)), scale4x4(float3(1.0f, 1.0f, 1.0f))));
-            lambert.SetUniform("model", model); GL_CHECK_ERRORS;
+            float4x4 model1;
+            model1 = transpose(mul(translate4x4(float3(0.0f, 0.0f, -10.0f)), scale4x4(float3(1.0f, 1.0f, 1.0f))));
+            lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
             glDrawElements(GL_TRIANGLE_STRIP, sphereIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+            float4x4 model2;
+            model2 = transpose(mul(translate4x4(float3(0.0f, 1.3f, -10.0f)), scale4x4(float3(0.8f, 0.8f, 0.8f))));
+            lambert.SetUniform("model", model2); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, sphereIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+            float4x4 model3;
+            model3 = transpose(mul(translate4x4(float3(0.0f, 2.25f, -10.0f)), scale4x4(float3(0.5f, 0.5f, 0.5f))));
+            lambert.SetUniform("model", model3); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, sphereIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+            float4x4 model4;
+            model4 = transpose(mul(translate4x4(float3(-0.15f, 2.35f, -9.56f)), scale4x4(float3(0.05f, 0.05f, 0.05f))));
+            lambert.SetUniform("model", model4); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, sphereIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+            float4x4 model5;
+            model5 = transpose(mul(translate4x4(float3(0.15f, 2.35f, -9.56f)), scale4x4(float3(0.05f, 0.05f, 0.05f))));
+            lambert.SetUniform("model", model5); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, sphereIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+        }
+        glBindVertexArray(0); GL_CHECK_ERRORS;
+
+        glBindVertexArray(vaoCone); GL_CHECK_ERRORS;
+        {
+            float4x4 model;
+            lambert.SetUniform("model", model); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, coneIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+        }
+        glBindVertexArray(0); GL_CHECK_ERRORS;
+
+        glBindVertexArray(vaoCylinder); GL_CHECK_ERRORS;
+        {
+            float4x4 model;
+            lambert.SetUniform("model", model); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, cylinderIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+        }
+        glBindVertexArray(0); GL_CHECK_ERRORS;
+
+        glBindVertexArray(vaoPlane); GL_CHECK_ERRORS;
+        {
+            float4x4 model;
+            lambert.SetUniform("model", model); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, planeIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+        }
+        glBindVertexArray(0); GL_CHECK_ERRORS;
+
+        glBindVertexArray(vaoParallelepiped); GL_CHECK_ERRORS;
+        {
+            float4x4 model1;
+            lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, parallelepipedIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+            float4x4 model2;
+            model2 = transpose(translate4x4(float3(+9.0f, 0.0f, 0.0f)));
+            lambert.SetUniform("model", model2); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, parallelepipedIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+        }
+        glBindVertexArray(0); GL_CHECK_ERRORS;
+
+        glBindVertexArray(vaoGrass); GL_CHECK_ERRORS;
+        {
+            float4x4 model, model_sample;
+            model_sample = mul(rotate_X_4x4(270 * LiteMath::DEG_TO_RAD), translate4x4(float3(-3.5f, +14.0f, -0.8f)));
+            model = transpose(model_sample);
+            lambert.SetUniform("model", model); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, grassIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+            for (int i = 0; i < 33; i++)
+            {
+                for (int j = 0; j < 29; j++) {
+                    model = mul(model_sample, translate4x4(float3(+0.25f * float(j), -0.25f * float(i), 0.0f)));
+                    model = mul(model, scale4x4(float3(1.0f, 1.0f, rand_num[i][j])));
+                    model = transpose(model);
+                    lambert.SetUniform("model", model); GL_CHECK_ERRORS;
+                    glDrawElements(GL_TRIANGLE_STRIP, grassIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+                }
+            }
+        }
+        glBindVertexArray(0); GL_CHECK_ERRORS;
+
+        glBindVertexArray(vaoBirdBody); GL_CHECK_ERRORS;
+        {
+            float4x4 modelBody = scale4x4(float3(0.2f, 0.2f, 0.4f));
+            modelBody = mul(rotate_Y_4x4((360-step) * LiteMath::DEG_TO_RAD), modelBody);
+            modelBody = transpose(mul(translate4x4(float3(+4.0f*cos(step*PI/180), +4.0f, -10.0f+4.0f*sin(step*PI/180))), modelBody));
+            lambert.SetUniform("model", modelBody); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, birdBodyIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+        }
+        glBindVertexArray(0); GL_CHECK_ERRORS;
+
+        glBindVertexArray(vaoBirdNose); GL_CHECK_ERRORS;
+        {
+            float4x4 model = rotate_Y_4x4((360 - step) * LiteMath::DEG_TO_RAD);
+            model = transpose(mul(translate4x4(float3(+4.0f * cos((step + 4.5) * PI / 180), +4.0f, -10.0f + 4.0f * sin((step + 4.5) * PI / 180))), model));
+            lambert.SetUniform("model", model); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, birdNoseIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+        }
+        glBindVertexArray(0); GL_CHECK_ERRORS;
+
+        glBindVertexArray(vaoBirdWing); GL_CHECK_ERRORS;
+        {
+            float4x4 model1 = scale4x4(float3(0.3f, 0.02f, 0.2f));
+            model1 = mul(rotate_Z_4x4((20*step) * LiteMath::DEG_TO_RAD), model1);
+            model1 = mul(rotate_Y_4x4((360 - step) * LiteMath::DEG_TO_RAD), model1);
+            model1 = transpose(mul(translate4x4(float3(+4.16f * cos(step * PI / 180), +4.0f, -10.0f + 4.16f * sin(step * PI / 180))), model1));
+            lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, birdWingIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+            float4x4 model2 = scale4x4(float3(0.3f, 0.02f, 0.2f));
+            model2 = mul(rotate_Z_4x4((20 * step) * LiteMath::DEG_TO_RAD), model2);
+            model2 = mul(rotate_Y_4x4((360 - step) * LiteMath::DEG_TO_RAD), model2);
+            model2 = transpose(mul(translate4x4(float3(+3.84f * cos(step * PI / 180), +4.0f, -10.0f + 3.84f * sin(step * PI / 180))), model2));
+            lambert.SetUniform("model", model2); GL_CHECK_ERRORS;
+            glDrawElements(GL_TRIANGLE_STRIP, birdWingIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
         }
         glBindVertexArray(0); GL_CHECK_ERRORS;
 
         lambert.StopUseShader(); GL_CHECK_ERRORS;
 		glfwSwapBuffers(window); 
+
+        if (step == 360)
+            step = 0;
+        else
+            step++;
 	}
 
     glDeleteVertexArrays(1, &vaoSphere);
+    glDeleteVertexArrays(1, &vaoCone);
+    glDeleteVertexArrays(1, &vaoCylinder);
+    glDeleteVertexArrays(1, &vaoPlane);
+    glDeleteVertexArrays(1, &vaoParallelepiped);
+    glDeleteVertexArrays(1, &vaoGrass);
+    glDeleteVertexArrays(1, &vaoBirdBody);
+    glDeleteVertexArrays(1, &vaoBirdNose);
+    glDeleteVertexArrays(1, &vaoBirdWing);
 	
     glfwTerminate();
 	return 0;
